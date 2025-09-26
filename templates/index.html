@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SucataPremium - Análise de Dados</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+        }
+        .upload-area {
+            border: 3px dashed #007bff;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            background: #e3f2fd;
+            border-color: #0056b3;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+        }
+        .visualization-container {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        .result-section {
+            display: none;
+        }
+        .viz-content {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+        }
+
+        .viz-content .plotly-graph-div {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .visualization-container {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+
+        .visualization-container h5 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-4 fw-bold">SucataPremium</h1>
+                    <p class="lead">Sistema Inteligente de Análise de Sucatas Ferrosas</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <i class="fas fa-industry fa-4x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Upload Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="upload-area">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-primary"></i>
+                    <h3>Faça Upload da Planilha</h3>
+                    <p class="text-muted">Envie sua planilha Excel para análise</p>
+                    
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <input type="file" class="form-control" id="fileInput" accept=".xlsx,.xls" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-chart-line me-2"></i>Analisar Dados
+                        </button>
+                    </form>
+                    
+                    <div class="mt-3">
+                        <a href="/download_template" class="btn btn-outline-primary">
+                            <i class="fas fa-download me-2"></i>Baixar Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2">Processando dados e treinando modelo...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="result-section">
+            <!-- IBGE Prices -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="fas fa-globe-americas me-2"></i>Preços de Referência (IBGE)</h3>
+                    <div id="ibgePrices" class="row"></div>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="fas fa-chart-bar me-2"></i>Estatísticas da Base</h3>
+                    <div id="stats" class="row"></div>
+                </div>
+            </div>
+
+            <!-- Predictions -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="fas fa-brain me-2"></i>Recomendações de Machine Learning</h3>
+                    <div id="predictions" class="stat-card"></div>
+                </div>
+            </div>
+
+            <!-- Visualizations -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="fas fa-chart-line me-2"></i>Visualizações</h3>
+                    <div id="visualizations"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    alert('Erro: ' + data.error);
+                }
+                
+            } catch (error) {
+                alert('Erro no upload: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        function displayResults(data) {
+            // Display IBGE prices
+            displayIBGEPrices(data.ibge_prices);
+            
+            // Display statistics
+            displayStatistics(data.stats);
+            
+            // Display predictions
+            displayPredictions(data.predictions);
+            
+            // Display visualizations
+            displayVisualizations(data.visualizations);
+            
+            // Show results section
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function displayIBGEPrices(prices) {
+            const container = document.getElementById('ibgePrices');
+            container.innerHTML = `
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Sucata Ferrosa</h5>
+                        <h3 class="text-primary">R$ ${prices.sucata_ferrosa.toFixed(2)}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Sucata Não-Ferrosa</h5>
+                        <h3 class="text-success">R$ ${prices.sucata_nao_ferrosa.toFixed(2)}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Ferro Gusa</h5>
+                        <h3 class="text-warning">R$ ${prices.ferro_gusa.toFixed(2)}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Aço Laminado</h5>
+                        <h3 class="text-danger">R$ ${prices.aco_laminado.toFixed(2)}</h3>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayStatistics(stats) {
+            const container = document.getElementById('stats');
+            container.innerHTML = `
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Total de Registros</h5>
+                        <h3 class="text-info">${stats.total_records}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Preço Médio Compra</h5>
+                        <h3 class="text-primary">R$ ${stats.avg_purchase_price.toFixed(2)}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Preço Médio Venda</h5>
+                        <h3 class="text-success">R$ ${stats.avg_sale_price.toFixed(2)}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h5>Peso Total</h5>
+                        <h3 class="text-warning">${stats.total_weight.toFixed(2)} kg</h3>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayPredictions(predictions) {
+            const container = document.getElementById('predictions');
+            
+            if (predictions.error) {
+                container.innerHTML = `<div class="alert alert-warning">${predictions.error}</div>`;
+                return;
+            }
+            
+            let scenariosHTML = '';
+            predictions.scenarios.forEach(scenario => {
+                scenariosHTML += `
+                    <div class="mb-2">
+                        <strong>Multiplicador ${scenario.multiplier}:</strong>
+                        Lucro Médio: R$ ${scenario.avg_profit.toFixed(2)} |
+                        Máx: R$ ${scenario.max_profit.toFixed(2)} |
+                        Mín: R$ ${scenario.min_profit.toFixed(2)}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = `
+                <h4 class="text-success">${predictions.recommendation}</h4>
+                <p><strong>Lucro Esperado:</strong> R$ ${predictions.expected_profit.toFixed(2)}</p>
+                <h5>Cenários Analisados:</h5>
+                ${scenariosHTML}
+            `;
+        }
+        
+        function displayVisualizations(visualizations) {
+            const container = document.getElementById('visualizations');
+            container.innerHTML = '';
+            
+            console.log("Visualizações recebidas:", visualizations);
+            console.log("Número de visualizações:", Object.keys(visualizations).length);
+            
+            if (Object.keys(visualizations).length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Não foi possível gerar visualizações com os dados fornecidos.
+                    </div>
+                `;
+                return;
+            }
+            
+            // Mapear títulos amigáveis
+            const vizTitles = {
+                'price_evolution': 'Evolução dos Preços de Compra e Venda',
+                'profit_distribution': 'Distribuição de Lucros por Transação',
+                'profit_by_type': 'Lucro por Tipo de Sucata',
+                'scatter_plot': 'Relação: Preço de Compra vs Preço de Venda',
+                'supplier_profit': 'Lucro Médio por Fornecedor',
+                'type_distribution': 'Distribuição por Tipo de Sucata'
+            };
+            
+            // Criar contêineres para cada gráfico
+            Object.entries(visualizations).forEach(([key, plotJson], index) => {
+                console.log(`Processando visualização: ${key}`);
+                
+                const vizContainer = document.createElement('div');
+                vizContainer.className = 'visualization-container mb-4';
+                vizContainer.innerHTML = `
+                    <h5>${vizTitles[key] || key}</h5>
+                    <div id="plot-${index}" class="viz-content"></div>
+                `;
+                container.appendChild(vizContainer);
+                
+                // Renderizar o gráfico após um pequeno delay
+                setTimeout(() => {
+                    try {
+                        const plotData = JSON.parse(plotJson);
+                        Plotly.newPlot(`plot-${index}`, plotData.data, plotData.layout, {
+                            responsive: true,
+                            displayModeBar: true
+                        });
+                    } catch (error) {
+                        console.error(`Erro ao renderizar gráfico ${key}:`, error);
+                        document.getElementById(`plot-${index}`).innerHTML = `
+                            <div class="alert alert-danger">
+                                Erro ao carregar gráfico: ${error.message}
+                            </div>
+                        `;
+                    }
+                }, 100 * index); // Delay escalonado para evitar conflitos
+            });
+        }
+        
+    </script>
+</body>
+</html>
