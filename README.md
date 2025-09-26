@@ -1,12 +1,8 @@
-SucataPremium - Sistema Inteligente de Análise de Sucatas Ferrosas
-https://img.shields.io/badge/Python-3.8%252B-blue
-https://img.shields.io/badge/Flask-2.0%252B-green
-https://img.shields.io/badge/Machine%2520Learning-Random%2520Forest-orange
-https://img.shields.io/badge/Bootstrap-5.1-purple
+<h2>🚀 SucataPremium - Sistema Inteligente de Análise de Sucatas Ferrosas</h2>
 
 Sistema web inteligente para análise e previsão de mercado de sucatas ferrosas utilizando machine learning e visualização interativa de dados.
 
-📋 Descrição do Projeto
+<h3>📋 Descrição do Projeto </h3>
 O SucataPremium é uma aplicação web desenvolvida em Flask que permite:
 
 📊 Análise de dados de transações de sucatas ferrosas
@@ -19,21 +15,22 @@ O SucataPremium é uma aplicação web desenvolvida em Flask que permite:
 
 🌐 Integração com dados de referência do IBGE
 
-🚀 Funcionalidades
-Principais Características
-Upload de planilhas Excel com dados de transações
+<h2>🚀 Funcionalidades </h2>
+<h3> Principais Características </h3>
 
-Pré-processamento automático dos dados
+  - Upload de planilhas Excel com dados de transações
 
-Treinamento de modelo Random Forest para previsão de lucros
+  - Pré-processamento automático dos dados
 
-Geração de visualizações interativas (gráficos temporais, distribuição, dispersão)
+  - Treinamento de modelo Random Forest para previsão de lucros
 
-Dashboard completo com estatísticas e métricas
+  - Geração de visualizações interativas (gráficos temporais, distribuição, dispersão)
 
-Template de planilha para padronização dos dados
+  - Dashboard completo com estatísticas e métricas
 
-Gráficos e Visualizações
+  - Template de planilha para padronização dos dados
+
+<h2> Gráficos e Visualizaçõess </h2>
 📅 Evolução temporal de preços
 
 📊 Distribuição de lucros
@@ -46,42 +43,42 @@ Gráficos e Visualizações
 
 🥧 Distribuição por tipo de sucata
 
-🛠️ Tecnologias Utilizadas
-Backend
-Python 3.8+
+<h2> 🛠️ Tecnologias Utilizadas </h2>
+<h3> Backend </h3>
+  - Python 3.8+
 
-Flask - Framework web
+  - Flask - Framework web
 
-Pandas - Manipulação de dados
+  - Pandas - Manipulação de dados
 
-Scikit-learn - Machine Learning
+  - Scikit-learn - Machine Learning
 
-Plotly - Geração de gráficos
+  - Plotly - Geração de gráficos
 
-Joblib - Serialização de modelos
+  - Joblib - Serialização de modelos
 
-Frontend
-Bootstrap 5 - Framework CSS
+<h3> Frontend </h3>
+  - Bootstrap 5 - Framework CSS
 
-Plotly.js - Visualizações interativas
+  - Plotly.js - Visualizações interativas
 
-Font Awesome - Ícones
+  - Font Awesome - Ícones
 
-JavaScript - Interatividade
+  - JavaScript - Interatividade
 
-Machine Learning
-Random Forest Regressor para previsão de lucros
+<h3> Machine Learning </h3>
+  - Random Forest Regressor para previsão de lucros
 
-Pré-processamento automático de dados
+  - Pré-processamento automático de dados
 
-Label Encoding para variáveis categóricas
+  - Label Encoding para variáveis categóricas
 
-Standard Scaler para normalização
+  - Standard Scaler para normalização
 
-📥 Instalação e Configuração
+<h3> 📥 Instalação e Configuração </h3>
 Pré-requisitos
-Python 3.8 ou superior
+  - Python 3.8 ou superior
 
-pip (gerenciador de pacotes Python)
+  - pip (gerenciador de pacotes Python)
 
-Git
+  - Git
