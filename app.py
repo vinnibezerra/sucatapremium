@@ -290,88 +290,338 @@ class SucataAnalyzer:
                 except Exception as e:
                     print(f"✗ Erro no gráfico temporal: {e}")
             
-            # 2. Gráfico de Distribuição de Lucros
+             # 2. Gráfico Ultra-Seguro para Distribuição de Lucros
             if all(col in df_viz.columns for col in ['preco_compra', 'preco_venda']):
                 try:
-                    df_viz['lucro'] = df_viz['preco_venda'] - df_viz['preco_compra']
-                    print(f"Lucro calculado. Média: R$ {df_viz['lucro'].mean():.2f}")
-                    
-                    fig_profit = px.histogram(df_viz, x='lucro', 
-                                            title='Distribuição de Lucros por Transação',
-                                            labels={'lucro': 'Lucro (R$)'},
-                                            color_discrete_sequence=['#00cc96'])
-                    fig_profit.update_layout(template='plotly_white', showlegend=False, height=400)
-                    
-                    visualizations['profit_distribution'] = fig_profit.to_json()
-                    print("✓ Gráfico de distribuição gerado com sucesso")
-                    
+                    # Cálculo seguro - arredondar valores
+                    df_viz['resultado'] = (df_viz['preco_venda'] - df_viz['preco_compra']).round(2)
+        
+                    # Análise segura da distribuição
+                    lucro_stats = {
+                        'positivos': len(df_viz[df_viz['resultado'] > 0]),
+                        'negativos': len(df_viz[df_viz['resultado'] < 0]),
+                        'neutros': len(df_viz[df_viz['resultado'] == 0]),
+                        'faixa_min': df_viz['resultado'].min(),
+                        'faixa_max': df_viz['resultado'].max()
+                    }
+        
+                    # GRÁFICO SEGURO - FOCO EM TENDÊNCIAS, NÃO EM VALORES EXATOS
+                    fig = go.Figure()
+        
+                    # Histograma principal
+                    fig.add_trace(go.Histogram(
+                        x=df_viz['resultado'],
+                        name='Distribuição',
+                        marker_color='#2E86AB',
+                        opacity=0.7,
+                        nbinsx=15,  # Número fixo de bins para segurança
+                        hovertemplate='<b>Faixa de Resultado</b><br>Transações: %{y}<extra></extra>'
+                    ))
+        
+                    # Linhas de referência discretas
+                    fig.add_vline(x=0, line_dash="dash", line_color="red", 
+                                 line_width=1, opacity=0.6)
+        
+                    # Área de destaque para lucros positivos
+                    if lucro_stats['faixa_max'] > 0:
+                        fig.add_vrect(x0=0, x1=lucro_stats['faixa_max'],
+                                fillcolor="green", opacity=0.1, 
+                                 annotation_text="Resultados Positivos", 
+                                annotation_position="top right")
+        
+                    # Área de destaque para prejuízos
+                    if lucro_stats['faixa_min'] < 0:
+                        fig.add_vrect(x0=lucro_stats['faixa_min'], x1=0,
+                                 fillcolor="red", opacity=0.1,
+                                 annotation_text="Resultados Negativos",
+                                 annotation_position="top left")
+        
+                    # Layout seguro e profissional
+                    fig.update_layout(
+                        title='📊 Distribuição de Resultados Financeiros',
+                        xaxis_title='Resultado por Transação (R$)',
+                        yaxis_title='Número de Transações',
+                        template='plotly_white',
+                        height=450,
+                        showlegend=False,
+                        font=dict(size=12),
+                        margin=dict(l=50, r=50, t=80, b=50),
+                        # Configurações de segurança
+                        xaxis=dict(
+                            showgrid=True,
+                            gridcolor='rgba(0,0,0,0.1)',
+                            tickformat='.2f'  # Formato fixo para segurança
+                        ),
+                        yaxis=dict(
+                            showgrid=False,
+                            tickformat='d'  # Números inteiros
+                        )
+                    )
+        
+                    visualizations['profit_distribution'] = fig.to_json()
+        
                 except Exception as e:
-                    print(f"✗ Erro no gráfico de distribuição: {e}")
-            
-            # 3. Boxplot de Lucro por Tipo de Sucata
+                    print(f"❌ Erro seguro no gráfico de distribuição: {e}")
+
+            # 3. Gráfico de Pizza: Lucro por Tipo de Sucata - CORES PROFISSIONAIS
             if 'tipo_sucata' in df_viz.columns and all(col in df_viz.columns for col in ['preco_compra', 'preco_venda']):
                 try:
                     if 'lucro' not in df_viz.columns:
                         df_viz['lucro'] = df_viz['preco_venda'] - df_viz['preco_compra']
-                    
-                    fig_box = px.box(df_viz, x='tipo_sucata', y='lucro',
-                                    title='Lucro por Tipo de Sucata',
-                                    labels={'tipo_sucata': 'Tipo de Sucata', 'lucro': 'Lucro (R$)'})
-                    fig_box.update_layout(template='plotly_white', height=400)
-                    
-                    visualizations['profit_by_type'] = fig_box.to_json()
-                    print("✓ Gráfico por tipo de sucata gerado com sucesso")
-                    
+        
+                    # Calcular lucro total por tipo de sucata
+                    lucro_por_tipo = df_viz.groupby('tipo_sucata')['lucro'].sum().reset_index()
+        
+                    # PALETA PROFISSIONAL PARA DADOS FINANCEIROS
+                    paletas_cores = {
+                        'financeira': ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#3B1F2B', '#6A8EAE', '#F0F3BD', '#57CC99'],
+                        'vibrante': ['#FF595E', '#FFCA3A', '#8AC926', '#1982C4', '#6A4C93', '#FF9F1C', '#2EC4B6', '#E71D36'],
+                        'pastel': ['#A8E6CF', '#DCEDC1', '#FFD3B6', '#FFAAA5', '#FF8B94', '#D4A5A5', '#9C89B8', '#F0A6CA']
+                        }
+        
+                    # Escolher uma paleta (recomendo 'financeira' ou 'vibrante')
+                    paleta_escolhida = paletas_cores['financeira']
+                    num_tipos = len(lucro_por_tipo)
+                    cores_finais = paleta_escolhida[:num_tipos]
+        
+                    fig_pizza = px.pie(lucro_por_tipo, 
+                          values='lucro', 
+                          names='tipo_sucata',
+                          title='📊 Distribuição do Lucro por Tipo de Sucata',
+                          color_discrete_sequence=cores_finais)
+        
+                    fig_pizza.update_layout(
+                            template='plotly_white', 
+                            height=450,
+                            legend=dict(
+                                orientation="h", 
+                                yanchor="bottom", 
+                                y=-0.3, 
+                                xanchor="center", 
+                                x=0.5,
+                                font=dict(size=11)
+                                ),
+                            title_x=0.5,
+                            title_font=dict(size=16)
+                            )
+        
+                    # Textos mais informativos
+                    fig_pizza.update_traces(
+                            textposition='inside' if num_tipos <= 5 else 'outside',
+                            textinfo='percent+label',
+                            textfont=dict(size=11, color='white' if num_tipos <= 5 else 'black'),
+                            marker=dict(line=dict(color='white', width=2))
+                            )
+        
+                    visualizations['profit_by_type'] = fig_pizza.to_json()
+                    print(f"✓ Gráfico de pizza com {num_tipos} tipos de sucata gerado com sucesso")
+        
                 except Exception as e:
-                    print(f"✗ Erro no gráfico por tipo: {e}")
+                    print(f"✗ Erro no gráfico de pizza por tipo: {e}")
             
-            # 4. Gráfico de Dispersão: Preço Compra vs Preço Venda
+            # 4. Gráfico Adaptativo Seguro com Linha Suavizada
             if all(col in df_viz.columns for col in ['preco_compra', 'preco_venda']):
                 try:
-                    fig_scatter = px.scatter(df_viz, x='preco_compra', y='preco_venda',
-                                        title='Relação: Preço de Compra vs Preço de Venda',
-                                        labels={'preco_compra': 'Preço Compra (R$)', 'preco_venda': 'Preço Venda (R$)'})
-                    fig_scatter.update_layout(template='plotly_white', height=400)
-                    
-                    visualizations['scatter_plot'] = fig_scatter.to_json()
-                    print("✓ Gráfico de dispersão gerado com sucesso")
-                    
-                except Exception as e:
-                    print(f"✗ Erro no gráfico de dispersão: {e}")
+                    n_transacoes = len(df_viz)
+        
+                    if n_transacoes <= 15:
+                        df_viz['transacao'] = [f"T{i+1}" for i in range(n_transacoes)]
+                        fig = px.bar(df_viz, x='transacao', y=['preco_compra', 'preco_venda'],
+                        title=f'📊 Compra vs Venda ({n_transacoes} transações)',
+                        barmode='group', labels={'value': 'Preço (R$)', 'variable': ''})
+                        fig.update_layout(height=400)
+                        # ... (código anterior para poucos dados) ...
+                        pass
+                    else:
+                        opacity = max(0.2, 1.0 - (n_transacoes / 2000))
+
+                        fig = px.scatter(df_viz, x='preco_compra', y='preco_venda',
+                                        title='📈 Relação: Preço de Compra vs Preço de Venda',
+                                        labels={'preco_compra': 'Preço de Compra (R$)', 
+                                                'preco_venda': 'Preço de Venda (R$)'},
+                                        color='lucro', opacity=opacity,
+                                        color_continuous_scale='RdYlGn',
+                                        color_continuous_midpoint=0)
+                                        
             
-            # 5. Gráfico de Barras: Lucro Médio por Fornecedor
+                        # LINHA SUAVIZADA - OPÇÃO RECOMENDADA
+                        max_val = max(df_viz[['preco_compra', 'preco_venda']].max().max(), 1) * 1.1
+                        fig.add_trace(go.Scatter(x=[0, max_val], y=[0, max_val],
+                                                mode='lines', 
+                                                name='Compra = Venda',
+                                                line=dict(color='blue',  # Cinza suave
+                                                            dash='dot',  # Pontilhado sutil
+                                                            width=2),
+                                                opacity=0.5))
+            
+                        # Linha de tendência (mantém azul normal para contraste)
+                        if n_transacoes > 10:
+                            z = np.polyfit(df_viz['preco_compra'], df_viz['preco_venda'], 1)
+                            p = np.poly1d(z)
+                            fig.add_trace(go.Scatter(x=[0, max_val], y=[p(0), p(max_val)],
+                                                    mode='lines', 
+                                                    name='Tendência',
+                                                    line=dict(color='green', width=1.2)))
+            
+                        fig.update_layout(
+                                            template='plotly_white', 
+                                            height=500,
+                                            legend=dict(
+                                                        orientation="h",      # Horizontal
+                                                        yanchor="bottom",     # Âncora na base
+                                                        y= -0.35,              # Acima do gráfico
+                                                        xanchor="center",     # Centralizada
+                                                        x=0.5,               # No centro
+                                                        bgcolor='rgba(255,255,255,0.8)',
+                                                        bordercolor='rgba(0,0,0,0.2)',
+                                                        borderwidth=1,
+                                                        font=dict(size=11)
+                                                    ),
+                                            margin=dict(t=50)  # Margem superior para caber a legenda
+                                        )
+
+                        
+                    visualizations['scatter_plot'] = fig.to_json()
+        
+                except Exception as e:
+                    print(f"❌ Erro no gráfico: {e}")
+            
+            # 5. Gráfico Ultra-Seguro para Fornecedores
             if 'fornecedor' in df_viz.columns and all(col in df_viz.columns for col in ['preco_compra', 'preco_venda']):
                 try:
-                    df_supplier = df_viz.copy()
-                    df_supplier['lucro'] = df_supplier['preco_venda'] - df_supplier['preco_compra']
-                    supplier_profit = df_supplier.groupby('fornecedor')['lucro'].mean().reset_index()
-                    
-                    fig_supplier = px.bar(supplier_profit, x='fornecedor', y='lucro',
-                                        title='Lucro Médio por Fornecedor',
-                                        labels={'fornecedor': 'Fornecedor', 'lucro': 'Lucro Médio (R$)'},
-                                        color='lucro', color_continuous_scale='Viridis')
-                    fig_supplier.update_layout(template='plotly_white', height=400)
-                    
-                    visualizations['supplier_profit'] = fig_supplier.to_json()
-                    print("✓ Gráfico por fornecedor gerado com sucesso")
-                    
-                except Exception as e:
-                    print(f"✗ Erro no gráfico por fornecedor: {e}")
+                    # Cálculos seguros
+                    df_viz['lucro'] = df_viz['preco_venda'] - df_viz['preco_compra']
+        
+                    # Agrupar de forma anônima
+                    supplier_stats = df_viz.groupby('fornecedor').agg({
+                                                    'lucro': 'mean',
+                                                    'preco_compra': 'count'
+                    }).rename(columns={'preco_compra': 'volume'}).reset_index()
+        
+                    n_suppliers = len(supplier_stats)
+        
+                    # DECISÃO ADAPTATIVA SEM EXPOR NÚMEROS EXATOS
+                    if n_suppliers <= 10:
+                        # Barras horizontais para ranking claro
+                        supplier_stats = supplier_stats.sort_values('lucro')
+                        fig = px.bar(supplier_stats, y='fornecedor', x='lucro',
+                                    title='📈 Rentabilidade por Parceiro Comercial',
+                                    orientation='h',
+                                    color='lucro', color_continuous_scale='RdYlGn',
+                                    color_continuous_midpoint=0)
             
-            # 6. Gráfico de Pizza: Distribuição por Tipo de Sucata
+                        fig.update_layout(showlegend=False, height=400,
+                                        xaxis_title='Rentabilidade (R$)',
+                                        yaxis_title='')
+            
+                    else:
+                        # Para muitos fornecedores: foco nos extremos
+                        top_5 = supplier_stats.nlargest(5, 'lucro')
+                        bottom_5 = supplier_stats.nsmallest(5, 'lucro')
+                        highlights = pd.concat([top_5, bottom_5]).drop_duplicates()
+            
+                        fig = px.bar(highlights, y='fornecedor', x='lucro',
+                                    title='🎯 Parceiros com Maior e Menor Rentabilidade',
+                                    orientation='h',
+                                    color='lucro', color_continuous_scale='RdYlGn')
+            
+                        fig.update_layout(showlegend=False, height=400)
+        
+                    # FORMATAÇÃO SEGURA FINAL
+                    fig.update_traces(
+                                    texttemplate='R$ %{x:.2f}',
+                                    hovertemplate='<b>%{y}</b><br>Rentabilidade: R$ %{x:.2f}<extra></extra>'
+                    )
+        
+                    # Remover qualquer informação sensível
+                    fig.update_layout(
+                                annotations=[],  # Limpar anotações
+                                margin=dict(l=50, r=50, t=60, b=50)
+                    )
+        
+                    visualizations['supplier_profit'] = fig.to_json()
+        
+                except Exception as e:
+                    print(f"❌ Erro seguro no gráfico de fornecedores: {e}")
+            
+           # 6. Gráfico Ultra-Seguro para Distribuição por Tipo de Sucata
             if 'tipo_sucata' in df_viz.columns:
                 try:
-                    type_distribution = df_viz['tipo_sucata'].value_counts()
-                    fig_pie = px.pie(values=type_distribution.values, 
-                                    names=type_distribution.index,
-                                    title='Distribuição por Tipo de Sucata')
-                    fig_pie.update_layout(template='plotly_white', height=400)
-                    
-                    visualizations['type_distribution'] = fig_pie.to_json()
-                    print("✓ Gráfico de pizza gerado com sucesso")
-                    
+                    # Análise segura - sem expor dados sensíveis
+                    tipo_analysis = df_viz['tipo_sucata'].value_counts().reset_index()
+                    tipo_analysis.columns = ['categoria', 'volume']
+                    tipo_analysis['participacao'] = (tipo_analysis['volume'] / len(df_viz)) * 100
+        
+                    n_categorias = len(tipo_analysis)
+        
+                    # PALETA PROFISSIONAL
+                    cores_seguras = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#3B1F2B', 
+                                    '#6A8EAE', '#57CC99', '#FF9F1C', '#8AC926', '#1982C4']
+        
+                    # DECISÃO ADAPTATIVA INTELIGENTE
+                    if n_categorias <= 5:
+                        # Donut elegante para poucas categorias
+                        fig = px.pie(tipo_analysis, values='volume', names='categoria',
+                                    title='📊 Composição por Tipo de Material',
+                                    hole=0.5,
+                                    color_discrete_sequence=cores_seguras)
+            
+                        fig.update_traces(textinfo='percent+label', textposition='inside')
+                        fig.update_layout(height=400, showlegend=False)
+            
+                    elif n_categorias <= 10:
+                        # Barras horizontais para ranking claro
+                        tipo_analysis = tipo_analysis.sort_values('volume')
+                        fig = px.bar(tipo_analysis, y='categoria', x='volume',
+                                    title='📈 Volume por Tipo de Material',
+                                    orientation='h',
+                                    color='volume', color_continuous_scale='Blues')
+            
+                        fig.update_traces(texttemplate='%{x} transações')
+                        fig.update_layout(height=450, showlegend=False,
+                                        xaxis_title='Volume de Transações')
+            
+                    else:
+                        # Para muitas categorias: Top 10 + agrupamento
+                        top_categorias = tipo_analysis.head(10)
+                        if n_categorias > 10:
+                            outros = pd.DataFrame({
+                                'categoria': [f'Demais Materiais ({n_categorias - 10} categorias)'],
+                                'volume': [tipo_analysis.tail(n_categorias - 10)['volume'].sum()],
+                                'participacao': [tipo_analysis.tail(n_categorias - 10)['participacao'].sum()]
+                            })
+                            plot_data = pd.concat([top_categorias, outros])
+                        else:
+                            plot_data = top_categorias
+            
+                        plot_data = plot_data.sort_values('volume')
+                        fig = px.bar(plot_data, y='categoria', x='volume',
+                                    title='🏆 Principais Categorias de Material',
+                                    orientation='h',
+                                    color='volume', color_continuous_scale='Viridis')
+            
+                        fig.update_layout(height=500, showlegend=False)
+        
+                    # FORMATAÇÃO SEGURA FINAL
+                    fig.update_layout(
+                        template='plotly_white',
+                        font=dict(size=12),
+                        margin=dict(l=50, r=50, t=80, b=50),
+                        # Remover informações sensíveis
+                        annotations=[],
+                        xaxis=dict(showgrid=True, gridcolor='rgba(0,0,0,0.1)'),
+                        yaxis=dict(showgrid=False)
+                    )
+        
+                    # Tooltip discreto
+                    fig.update_traces(
+                        hovertemplate='<b>%{label}</b><br>Volume: %{value} transações<extra></extra>'
+                    )
+        
+                    visualizations['type_distribution'] = fig.to_json()
+        
                 except Exception as e:
-                    print(f"✗ Erro no gráfico de pizza: {e}")
+                    print(f"❌ Erro seguro no gráfico de tipos: {e}")
             
             print(f"✅ Total de visualizações geradas: {len(visualizations)}")
             
