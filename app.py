@@ -633,6 +633,118 @@ class SucataAnalyzer:
             traceback.print_exc()
             return {}
     
+    def generate_time_analysis(self, df):
+        """Gera análise temporal com agrupamento por período"""
+        try:
+            time_analysis = {}
+            
+            # Verificar se temos as colunas necessárias
+            if 'data_compra' not in df.columns or 'preco_compra' not in df.columns:
+                return {"error": "Colunas de data e preço necessárias não encontradas"}
+            
+            # Converter data_compra para datetime
+            df_time = df.copy()
+            df_time['data_compra'] = pd.to_datetime(df_time['data_compra'], errors='coerce')
+            df_time = df_time.dropna(subset=['data_compra', 'preco_compra'])
+            
+            if len(df_time) == 0:
+                return {"error": "Dados insuficientes para análise temporal"}
+            
+            # Preparar dados para diferentes agrupamentos
+            time_analysis['raw_data'] = df_time[['data_compra', 'preco_compra']].to_dict('records')
+            
+            # Agrupamento por MÊS
+            df_monthly = df_time.copy()
+            df_monthly['periodo'] = df_monthly['data_compra'].dt.to_period('M')
+            monthly_stats = df_monthly.groupby('periodo').agg({
+                'preco_compra': ['mean', 'min', 'max', 'count']
+            }).round(2)
+            monthly_stats.columns = ['media', 'minimo', 'maximo', 'quantidade']
+            monthly_stats = monthly_stats.reset_index()
+            monthly_stats['periodo'] = monthly_stats['periodo'].astype(str)
+            
+            time_analysis['monthly'] = monthly_stats.to_dict('records')
+            
+            # Agrupamento por SEMESTRE
+            df_semester = df_time.copy()
+            df_semester['ano'] = df_semester['data_compra'].dt.year
+            df_semester['semestre'] = (df_semester['data_compra'].dt.month - 1) // 6 + 1
+            df_semester['periodo'] = df_semester['ano'].astype(str) + '-S' + df_semester['semestre'].astype(str)
+            
+            semester_stats = df_semester.groupby('periodo').agg({
+                'preco_compra': ['mean', 'min', 'max', 'count']
+            }).round(2)
+            semester_stats.columns = ['media', 'minimo', 'maximo', 'quantidade']
+            semester_stats = semester_stats.reset_index()
+            
+            time_analysis['semester'] = semester_stats.to_dict('records')
+            
+            # Agrupamento por ANO
+            df_yearly = df_time.copy()
+            df_yearly['periodo'] = df_yearly['data_compra'].dt.year
+            yearly_stats = df_yearly.groupby('periodo').agg({
+                'preco_compra': ['mean', 'min', 'max', 'count']
+            }).round(2)
+            yearly_stats.columns = ['media', 'minimo', 'maximo', 'quantidade']
+            yearly_stats = yearly_stats.reset_index()
+            yearly_stats['periodo'] = yearly_stats['periodo'].astype(str) + '-A'
+            
+            time_analysis['yearly'] = yearly_stats.to_dict('records')
+            
+            # Gerar visualização gráfica
+            fig = go.Figure()
+            
+            # Adicionar linha da média mensal
+            if len(monthly_stats) > 0:
+                fig.add_trace(go.Scatter(
+                    x=monthly_stats['periodo'],
+                    y=monthly_stats['media'],
+                    mode='lines+markers',
+                    name='Média Mensal',
+                    line=dict(color='#3498db', width=3),
+                    marker=dict(size=8)
+                ))
+            
+            # Adicionar área de variação (mínimo-máximo)
+            if len(monthly_stats) > 0:
+                fig.add_trace(go.Scatter(
+                    x=monthly_stats['periodo'],
+                    y=monthly_stats['maximo'],
+                    mode='lines',
+                    name='Máximo',
+                    line=dict(width=0),
+                    showlegend=False
+                ))
+                
+                fig.add_trace(go.Scatter(
+                    x=monthly_stats['periodo'],
+                    y=monthly_stats['minimo'],
+                    mode='lines',
+                    name='Mínimo',
+                    line=dict(width=0),
+                    fillcolor='rgba(52, 152, 219, 0.2)',
+                    fill='tonexty',
+                    showlegend=False
+                ))
+            
+            fig.update_layout(
+                title='📈 Análise Temporal - Preço Médio de Compra',
+                xaxis_title='Período',
+                yaxis_title='Preço Médio (R$)',
+                template='plotly_white',
+                height=500,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            time_analysis['chart'] = fig.to_json()
+            
+            return time_analysis
+            
+        except Exception as e:
+            print(f"Erro na análise temporal: {e}")
+            return {"error": f"Erro na análise temporal: {str(e)}"}
+    
     def generate_fallback_visualizations(self):
         """Gera visualizações básicas quando há erro"""
         try:
@@ -641,6 +753,7 @@ class SucataAnalyzer:
             return {'fallback_viz': pio.to_html(fig, full_html=False)}
         except:
             return {}
+            
 
 analyzer = SucataAnalyzer()
 
@@ -688,12 +801,15 @@ def upload_file():
             
             # Gerar visualizações com dados ORIGINAIS
             visualizations = analyzer.generate_visualizations(df_original)
-        
+            
+            # 🆕 NOVA ANÁLISE TEMPORAL
+            time_analysis = analyzer.generate_time_analysis(df_original)
+            
             # Garantir que todas as visualizações sejam strings
             safe_visualizations = {}
             for key, value in visualizations.items():
                 if value is not None:
-                    safe_visualizations[key] = str(value)  # Converter para string)
+                    safe_visualizations[key] = str(value)
             
             # Estatísticas básicas
             stats = {
@@ -706,15 +822,16 @@ def upload_file():
             }
             
             response_data = {
-            'success': True,
-            'stats': stats,
-            'ibge_prices': ibge_prices,
-            'training_results': training_results,
-            'predictions': predictions,
-            'visualizations': safe_visualizations,  # Usar versão segura
-            'columns': list(df_original.columns),
-            'sample_data': df_original.head(5).to_dict('records')
-        }
+                'success': True,
+                'stats': stats,
+                'ibge_prices': ibge_prices,
+                'training_results': training_results,
+                'predictions': predictions,
+                'visualizations': safe_visualizations,
+                'time_analysis': time_analysis,  # 🆕 NOVO CAMPO
+                'columns': list(df_original.columns),
+                'sample_data': df_original.head(5).to_dict('records')
+            }
             
             return app.response_class(
                 response=json.dumps(response_data, cls=NumpyEncoder),

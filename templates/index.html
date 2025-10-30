@@ -156,6 +156,51 @@
                 </div>
             </div>
 
+            <!-- 🆕 NOVA SEÇÃO: Análise Temporal -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h3><i class="fas fa-calendar-alt me-2"></i>Análise Temporal</h3>
+                    <div class="stat-card">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="periodFilter" class="form-label"><strong>Agrupar por:</strong></label>
+                                <select id="periodFilter" class="form-select">
+                                    <option value="monthly">Mensal</option>
+                                    <option value="semester">Semestral</option>
+                                    <option value="yearly">Anual</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button id="updateTimeAnalysis" class="btn btn-primary">
+                                    <i class="fas fa-sync-alt me-2"></i>Atualizar Visualização
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Gráfico de Análise Temporal -->
+                        <div id="timeAnalysisChart" class="viz-content mb-4"></div>
+                        
+                        <!-- Tabela de Dados -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="timeAnalysisTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Período</th>
+                                        <th>Preço Médio (R$)</th>
+                                        <th>Preço Mínimo (R$)</th>
+                                        <th>Preço Máximo (R$)</th>
+                                        <th>Qtd. Transações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="timeAnalysisData">
+                                    <!-- Os dados serão preenchidos via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Visualizations -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -209,6 +254,11 @@
             
             // Display predictions
             displayPredictions(data.predictions);
+            
+            // 🆕 Display time analysis
+            if (data.time_analysis) {
+                displayTimeAnalysis(data.time_analysis);
+            }
             
             // Display visualizations
             displayVisualizations(data.visualizations);
@@ -304,6 +354,104 @@
                 ${scenariosHTML}
             `;
         }
+
+        // 🆕 NOVAS FUNÇÕES PARA ANÁLISE TEMPORAL
+        let currentTimeAnalysisData = null;
+
+        function displayTimeAnalysis(timeAnalysis) {
+            currentTimeAnalysisData = timeAnalysis;
+            
+            if (timeAnalysis.error) {
+                document.getElementById('timeAnalysisChart').innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ${timeAnalysis.error}
+                    </div>
+                `;
+                document.getElementById('timeAnalysisData').innerHTML = '';
+                return;
+            }
+            
+            // Renderizar gráfico inicial (mensal)
+            renderTimeAnalysisChart('monthly');
+            renderTimeAnalysisTable('monthly');
+        }
+
+        function renderTimeAnalysisChart(periodType) {
+            const container = document.getElementById('timeAnalysisChart');
+            
+            try {
+                if (currentTimeAnalysisData.chart) {
+                    const plotData = JSON.parse(currentTimeAnalysisData.chart);
+                    
+                    // Atualizar título baseado no período selecionado
+                    let periodTitle = '';
+                    switch(periodType) {
+                        case 'monthly':
+                            periodTitle = 'Mensal';
+                            break;
+                        case 'semester':
+                            periodTitle = 'Semestral';
+                            break;
+                        case 'yearly':
+                            periodTitle = 'Anual';
+                            break;
+                    }
+                    
+                    plotData.layout.title = `📈 Análise Temporal - Preço Médio de Compra (${periodTitle})`;
+                    
+                    Plotly.newPlot('timeAnalysisChart', plotData.data, plotData.layout, {
+                        responsive: true,
+                        displayModeBar: true
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao renderizar gráfico temporal:', error);
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        Erro ao carregar gráfico: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function renderTimeAnalysisTable(periodType) {
+            const tbody = document.getElementById('timeAnalysisData');
+            const data = currentTimeAnalysisData[periodType];
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">
+                            Nenhum dado disponível para o período selecionado
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            data.forEach(item => {
+                html += `
+                    <tr>
+                        <td><strong>${item.periodo}</strong></td>
+                        <td>R$ ${item.media.toFixed(2)}</td>
+                        <td>R$ ${item.minimo.toFixed(2)}</td>
+                        <td>R$ ${item.maximo.toFixed(2)}</td>
+                        <td>${item.quantidade}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        // Event Listener para o botão de atualização
+        document.getElementById('updateTimeAnalysis').addEventListener('click', function() {
+            const periodType = document.getElementById('periodFilter').value;
+            renderTimeAnalysisChart(periodType);
+            renderTimeAnalysisTable(periodType);
+        });
         
         function displayVisualizations(visualizations) {
             const container = document.getElementById('visualizations');
